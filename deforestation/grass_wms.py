@@ -25,17 +25,16 @@ from utilites import (
 
 NS_XLINK = 'http://www.w3.org/1999/xlink'
 
+
+# Общий GRASS на все запросы. Возможны проблемы при 
+# одновременном использовании с разными MAPSET'ами
 grs = GRASS(gisbase='/usr/lib/grass70', 
     dbase=get_grassdata_path(), 
     location=get_location_name()
 )
 
 
-def _grass_wms(layers=[], bbox=[], width=256, height=256):
-    # Получаем список известных растровых и векторных слоев
-    vector_layers = grs.grass.list_strings(type="vect")
-    raster_layers = grs.grass.list_strings(type="rast")
-   
+def _grass_wms(layers=[], bbox=[], width=256, height=256):   
     minx, miny, maxx, maxy = bbox[0], bbox[1], bbox[2], bbox[3]
     grs.grass.run_command("g.region", w=minx, s=miny, e=maxx, n=maxy)
 
@@ -54,10 +53,7 @@ def _grass_wms(layers=[], bbox=[], width=256, height=256):
                           start="png")
 
     for layer in layers:
-        if layer in raster_layers:
-            grs.grass.run_command("d.rast", map=layer, quiet=1, flags='n')
-        elif layer in vector_layers:
-            grs.grass.run_command("d.vect", map=layer, quiet=1, fcolor="0:0:255", color=None)
+        grs.grass.run_command("d.rast", map=layer, quiet=1, flags='n')
 
     grs.grass.run_command("d.mon", stop="png")
 
@@ -66,8 +62,15 @@ def _grass_wms(layers=[], bbox=[], width=256, height=256):
 
 @view_config(route_name="wms")
 def wms_view(request):
-
+    
+    mapset = request.matchdict['mapset']
+    mapsets = grs.grass.read_command('g.mapset', flags='l').split()
+    
+    if mapset not in mapsets:
+        raise HTTPBadRequest("Invalid MAPSET name.")
+    
     params = dict((k.upper(), v) for k, v in request.params.iteritems())
+    
     
     req = params.get('REQUEST')
     service = params.get('SERVICE')
@@ -83,7 +86,6 @@ def wms_view(request):
 
         
 def _get_map(params):
-    print params
     layers = params.get("LAYERS", "").split(",")
     bbox = params.get("BBOX", "").split(",")
     width = params.get("WIDTH")
@@ -96,7 +98,6 @@ def _get_map(params):
                              bbox=bbox,
                              width=width,
                              height=height)
-        print 'FILENAME', filename, width, height
         f = open(filename, "r+")
         body = f.read()
         f.close()
@@ -145,7 +146,10 @@ def _get_capabilities(request):
             maxx="180.0", maxy="85.0"))
     )
     
+    mapset = request.matchdict['mapset']
     raster_layers = grs.grass.list_strings(type="rast")
+    if mapset != 'PERMANENT':
+        raster_layers += grs.grass.list_strings(type="rast", mapset=mapset)
     for l in raster_layers:
         lnode = E.Layer(
             dict(queryable='0'),
@@ -192,7 +196,7 @@ def _default_wms_body(layers=None):
                maxExtent: new OpenLayers.Bounds(419602, 4999818, 743949, 5320904),
                numZoomLevels: 18,
            });
-           var wms_layer = new OpenLayers.Layer.WMS("GRASS WMS", '/wms', {
+           var wms_layer = new OpenLayers.Layer.WMS("GRASS WMS", '/cruncher_wms/wms', {
                layers: "%s"
            },{
                singleTile: true,
@@ -216,7 +220,7 @@ def main():
     config.add_static_view('static', 'static', cache_max_age=3600)
     
     config.add_route("index", '/')
-    config.add_route("wms", '/wms')
+    config.add_route("wms", '/wms/{mapset}/')
     
     config.scan()
     
