@@ -1,6 +1,7 @@
 # encoding: utf-8
 
 import os
+import datetime
 import tarfile
 
 
@@ -60,3 +61,10 @@ def get_raster_list(dirname):
     file_list = [os.path.join(dirname, f) for f in file_list if f.endswith('.TIF')]
 
     return file_list
+
+def format_timestamp(year, day):
+    """Return timestump in GRASS GIS format
+    """
+    date = datetime.datetime(year, 1, 1) + datetime.timedelta(day)
+    stamp = date.strftime('%-d %b %Y').lower()
+    return stamp
