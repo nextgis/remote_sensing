@@ -34,11 +34,11 @@ grs = GRASS(gisbase='/usr/lib/grass70',
 )
 
 
-def _grass_wms(layers=[], bbox=[], width=256, height=256):   
+def _grass_wms(layers=[], bbox=[], width=256, height=256):    
     minx, miny, maxx, maxy = bbox[0], bbox[1], bbox[2], bbox[3]
-    
+
     first_raster = layers[0]
-    
+
     grs.grass.run_command("g.region", 
                           w=minx, s=miny, e=maxx, n=maxy,
                          raster=first_raster)
@@ -50,17 +50,19 @@ def _grass_wms(layers=[], bbox=[], width=256, height=256):
     os.environ["GRASS_HEIGHT"] = height
     os.environ["GRASS_RENDER_TRANSPARENT"] = "TRUE"
 
-    # Отрисовка
-    grs.grass.run_command("d.mon", 
-                          output=filename, 
-                          width=width,
-                          height=height,
-                          start="png")
+    try:
+        # Отрисовка
+        grs.grass.run_command("d.mon", 
+                              output=filename, 
+                              width=width,
+                              height=height,
+                              start="png")
 
-    for layer in layers:
-        grs.grass.run_command("d.rast", map=layer, quiet=1, flags='n')
+        for layer in layers:
+            grs.grass.run_command("d.rast", map=layer, quiet=1, flags='n')
 
-    grs.grass.run_command("d.mon", stop="png")
+    finally:
+        grs.grass.run_command("d.mon", stop="png")
 
     return filename
 
