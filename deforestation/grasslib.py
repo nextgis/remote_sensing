@@ -37,25 +37,45 @@ class GRASS():
         gregion = self.grass.region()
         return gregion
     
-    # def rast_to_array(self, map_name):
-    #     """Считывает растр в текущем регионе и возвращает его в виде одной строки numpy.array
-    #     """
-    #     with self.rast.RasterRow(map_name) as rast:
-    #         cols, rows = rast.info.cols, rast.info.rows
-    #         dtype = rast[0].dtype
-    #         arr = np.empty((rows, cols), dtype)
-    #         for i in range(rows):
-    #             arr[i] = rast[i]
+    def raster_to_array(self, map_name):
+        """Считывает растр в текущем регионе и возвращает его в виде одной строки numpy.array
+        """
+        with self.rast.RasterRow(map_name) as rast:
+            cols, rows = rast.info.cols, rast.info.rows
+            dtype = rast[0].dtype
+            arr = np.empty((rows, cols), dtype)
+            for i in range(rows):
+                arr[i] = rast[i]
             
         return np.reshape(arr, rows*cols)
     
-    def rast_to_array(self, map_name):
-        """Считывает растр в текущем регионе и возвращает его в виде одной строки numpy.array
+    # def raster_to_array(self, map_name):
+    #     """Считывает растр в текущем регионе и возвращает его в виде одной строки numpy.array
+    #     """
+    #     arr = self.garray.array()
+    #     arr.read(map_name)
+    #     row, col = arr.shape
+    #     return arr.reshape(row*col)
+    
+    def rasters_to_array(self, maps):
+        """Считывает список растров и возвращает их в виде двумерного numpy.array
+        (каждый растр в отдельном столбце)
         """
-        arr = self.garray.array()
-        arr.read(map_name)
-        row, col = arr.shape
-        return arr.reshape(row*col)
+        rows = self.get_region_info()['cells']
+        cols = len(maps)
+        
+        # Наверное, есть способ узнать тип карты проще, чем этот
+        rast = self.raster_to_array(maps[0])
+        dtype = rast.dtype
+        
+        arr = np.empty((rows, cols), dtype)
+    
+        arr[:, 0] = rast
+        for i in range(1, cols):
+            rast = self.raster_to_array(maps[i])
+            arr[:, i] = rast
+            
+        return arr
     
     def array_to_rast(self, arr, map_name, overwrite=None):
         """Сохраняет numpy.array в виде растра на диске

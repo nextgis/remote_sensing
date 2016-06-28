@@ -16,8 +16,16 @@ def get_location_name():
 def get_location_path():
     grass_data = get_grassdata_path()
     locname = get_location_name()
-    return os.path.join(grass_data, locname)    
+    return os.path.join(grass_data, locname)
 
+
+def rm_grass_lock(mapset):
+    """Удалить lock-файл для заданного mapset (очистка мусора после некорректного завершения).
+    (использовать с осторожностью, только если есть уверенность, что данный мапсет не используется!)
+    """
+    filename = os.path.join(get_location_path(), mapset, '.gislock')
+    if os.path.isfile(filename):
+        os.remove(filename)
 
 def unpack(data_file, extract_dir):
     try:
