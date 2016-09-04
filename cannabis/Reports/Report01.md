@@ -64,7 +64,7 @@ We have created first version of the system. The system has several parameters t
 
 We used two scenes (http://kolesov.nextgis.com/resource/100/display?base=osm-mapnik&lon=-123.8228&lat=40.1049&angle=0&zoom=11&styles=569,579,555,549) as testing area for setup the system parameters (see details in Appendix). 
 
-Then we applied the system to other scenes taken in 11 jul 2016. The resulst are here http://kolesov.nextgis.com/resource/100/display?base=osm-mapnik&lon=-123.7170&lat=40.8263&angle=0&zoom=8&styles=587,551,555,527,549,529,545,553,563,521,535,559,523,561,539,543,547,531,537,533,541,557,525
+Then we applied the system to other scenes taken in 11 jul 2016. The resulst are here http://kolesov.nextgis.com/resource/100/display?base=osm-mapnik&lon=-123.8385&lat=40.6925&angle=0&zoom=8&styles=595,551,555,527,549,529,545,553,563,521,535,559,523,561,539,543,547,531,537,533,541,557,525
 
 The group 'NextGIS results' contains three layers producted by the expert system:
 
