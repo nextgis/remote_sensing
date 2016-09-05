@@ -1,21 +1,21 @@
-Searching greenhouses on PlanetLabs images.
-=========================================
+Finding greenhouses on Planet Labs images.
+==========================================
 
-This document describes current state of "Greenhouses project", classification results and used methods.
+This document describes current state of "Greenhouses project", classification results and methods used.
 
 ## Introduction
 
 1. During the previous discussion we had the next conclusions:
 
- (a) Greenhouses are bright spots usually. There are also bright spots of other types (sandy soil for example), but the brightest spots are greenhouses an other buildings. Details of the constructions are not visible on the images, so the difference between a greenhouse and a building is the size. (But there are big greenhouses and small buildings.)
+ (a) Greenhouses are usually bright spots. There are also bright spots of other types (sandy soil for example), but the brightest spots are greenhouses and other buildings. The main difference between a greenhouse and a building is the size. (But there are big greenhouses and small buildings.)
 
  (b) Typical shapes of greenhouses are rectangular and the typical sizes of greenhouses are 4x10 -- 7x25 meters.
 
- (c) The Planet photos are not well preprocessed for geopositioning: a greenhouse on one photo can be "shifted" by 75 meters from another photo.
+ (c) The Planet images are not well georeferenced: a greenhouse on one image can be shifted by upto 75 meters from another image.
 
- (d) A greenhouse may be is clearly visible in one photo and totally invisible in other photo (taken in the same day).
+ (d) A greenhouse may be clearly visible on one image and totally invisible on the other (taken in the same day).
 
-2. Because of (1.c) and (1.d) we have two possibilities:
+2. Because of (1.c) and (1.d) we have two options:
 
  (a) create new (large and representative) training set;
 
