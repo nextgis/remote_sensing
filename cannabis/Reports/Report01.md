@@ -21,13 +21,13 @@ This document describes current state of "Greenhouses project", classification r
 
  (b) use classification approaches that don't need training set.
 
-3. We tried (2.b) approach, firstly we constructed some textural an spectral descriptors of greenhouses and background areas and used cluster analysis to find proper descriptions of greenhouses. Then we processed one of the scenes (scene_id = 20160711_174921_0c2b). The visual result is presented here: http://kolesov.nextgis.com/resource/100/display?base=osm-mapnik&lon=-123.8390&lat=40.1608&angle=0&zoom=12&styles=574,99,569,549 (ask us for the credentials).
+3. We started with 2.b. Firstly we constructed some textural and spectral descriptors of greenhouses and background areas and used cluster analysis to find proper descriptions of greenhouses. Then we processed one of the scenes (scene_id = 20160711_174921_0c2b). The visual result is presented here: http://kolesov.nextgis.com/resource/100/display?base=osm-mapnik&lon=-123.8390&lat=40.1608&angle=0&zoom=12&styles=574,99,569,549 (ask for the credentials).
 
 The result contains a lot of false positive polygons, so we decided to try more complicated approach. This approach and the results are presented in the next sections.
 
 ## Main ideas
 
-As we saw early, greenhouses are bright objects and we can describe them using few rules:
+As we saw earlier, greenhouses are bright objects and we can describe them using few rules:
 
 ```
 If we see
@@ -41,7 +41,7 @@ Then
     greenhouse or other building.
 ```
 
-We can easy train a human to find greenhouses or other buildings using this rule. So we decided to create an expert system that simulates human approach. Because of uncertainties of such concepts like '`BRIGHT`', '`SPOT`' etc. we used fuzzy logic as underlaying engine of the system.
+We can easily train a human to find greenhouses or other buildings using this rule. So we decided to create an expert system that simulates human approach. Because of uncertainties of such concepts like '`BRIGHT`', '`SPOT`' etc. we used fuzzy logic as underlying engine of the system.
 
 The result of first version of the system are presented below. Some technical details of the system are in Appendix.
 
