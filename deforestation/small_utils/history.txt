@@ -1,0 +1,58 @@
+Тут хранится последовательность команд для разных мелких задач, чтобы не забыть какой этап после какого.
+
+
+1. Облака и снег:
+
+1.1. Генерируем список заданий на базе моделей, которые были построены https://176.9.38.120/cruncher/notebooks/deforestation/CMASK_exploration.ipynb:
+ for RAST in $(g.list rast pat="toar*_B1" | cut -d_ -f2)
+ do 
+   echo Rscript cmask.R $RAST cloud_model.rda snow_model.rda 
+ done > cloud_snow.sh  
+                                                                                     
+  
+1.2. Запускаем:
+ sh cloud_snow.sh
+ 
+В итоге будут созданы растры типа clouds_LC81130272015356LGN00 и snow_LC81130272015356LGN00. Пиксели растров содержат линейную комбинацию признаков и их коэффициентов: b0 + b1*x1 + ... + bn*xn. Эти значения нужно пропустить через логистическую функцию, тогда получим описание снег-не-снег и облако-не-облако в интервале (0, 1).
+
+1.3. Бинарная маска снега и облаков:
+  В файле winter.scenes записываем идентификаторы (например, LC81130272015356LGN00) зимних сцен. Затем создаем маски облаков и снега (real.clouds_LC81130272015356LGN00):
+  for MAP in $(cat winter.scenes )
+  do 
+    g.region rast=clouds_$MAP
+    r.mapcalc "real.clouds_$MAP = (clouds_$MAP > 0) & (clouds_$MAP > snow_$MAP)"
+  done
+  
+  for MAP in $(cat winter.scenes )
+  do 
+    g.region rast=clouds_$MAP
+    r.mapcalc "real.snow_$MAP = (snow_$MAP > 0) & (clouds_$MAP < snow_$MAP)"
+  done
+
+
+
+2. Безоблачные композиты на базе медианного фильтра
+
+2.1. Удаляем из каналов участки, закрытые облаками (для первых 7-ми каналов):
+  for BANDNUM in $(seq 7)
+  do 
+    for MAP in $(cat winter.scenes )
+    do 
+      g.region rast=toar_${MAP}_B${BANDNUM}
+      r.mapcalc "clean.${MAP}_B${BANDNUM} = if(real.clouds_$MAP, null(), toar_${MAP}_B${BANDNUM})"
+    done  
+  done
+ 
+2.2. Медианный фильтр
+ в файлы tileXX складываем идетификаторы сцен с одинаковыми Path-Row, которые будут участвовать в композите.
+ 
+ for FILENAME in $(ls tile*)
+ do 
+   for BANDNUM in $(seq 7)
+   do 
+     python composite.py input=$FILENAME rast_prefix='clean.' out=composite.${FILENAME}_B${BANDNUM} band="_B${BANDNUM}" met=median
+   done
+ done
+
+ 
+
