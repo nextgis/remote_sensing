@@ -53,6 +53,130 @@
      python composite.py input=$FILENAME rast_prefix='clean.' out=composite.${FILENAME}_B${BANDNUM} band="_B${BANDNUM}" met=median
    done
  done
+ 
+3. Разности
+
+ for FILENAME in $(ls tile*)
+ do 
+   for MAP in $(cat $FILENAME)
+   do
+     for BANDNUM in $(seq 7)
+     do 
+       NAME=clean.${MAP}_B${BANDNUM}
+       g.region rast=$NAME
+       r.mapcalc "diff.${MAP}_B${BANDNUM} = $NAME - composite.${FILENAME}_B${BANDNUM}"
+     done
+   done
+ done
+
+
+4. Выборка точек внутри полигонов
+
+ r.to.vect train15_16 out=pos15_16 type=point
+
+ v.to.rast train15_16 out=train15_16 use=attr attrib=jdate
+ r.to.vect train15_16 out=pos15_16 type=point column=jdate
+ 
+ v.db.addcolumn map="pos15_16" columns="jday int, jyear int"
+ v.db.update map='pos15_16' column='jyear' query_column="substr(jdate, 1, 2) + 2000"
+ v.db.update map='pos15_16' column='jday' query_column="substr(jdate, 3)"
+ 
+ # 2016-02-01 <-- jday=32, jyear=2016
+ v.db.update map='pos15_16' column='label' query_column="date(julianday(jyear||'-01-01'), '+'|| jday || ' day', '-1 day' )"
+ 
+ 
+ 
+5. Разброс корреляций пересекающихся сцен в один и тот же день и соседние дни:
+ DATES=$( g.list rast pat="toar_*B5" | cut -c15-21 | sort -u) 
+ for DAY in  $DATES
+ do
+    MAPS=$(g.list rast pat="toar_*${DAY}*_B5" sep=',')
+    echo r.covar -r $MAPS
+ done
+
+ r.covar -r toar_LC81120272014346LGN00_B5,toar_LC81120282014346LGN00_B5
+     N = 7079098
+     1.000000 0.999816 
+     0.999816 1.000000 
+ 
+ r.covar -r toar_LC81120272014362LGN00_B5,toar_LC81120282014362LGN00_B5
+     N = 7092965
+     1.000000 0.999729 
+     0.999729 1.000000 
+
+ r.covar -r toar_LC81120272015045LGN00_B5,toar_LC81120282015045LGN00_B5
+     N = 7086888
+     1.000000 0.998312 
+     0.998312 1.000000 
+
+ r.covar -r toar_LC81120272015093LGN00_B5,toar_LC81120282015093LGN00_B5
+    N = 7093544
+    1.000000 0.999957 
+    0.999957 1.000000 
+
+ r.covar -r toar_LC81120272015109LGN00_B5,toar_LC81120282015109LGN00_B5
+    N = 7102562
+    1.000000 0.994910 
+    0.994910 1.000000 
+ 
+ r.covar -r toar_LC81120272015349LGN00_B5,toar_LC81120282015349LGN00_B5
+    N = 7082405
+    1.000000 0.999828 
+    0.999828 1.000000 
+
+ r.covar -r toar_LC81120272015365LGN00_B5,toar_LC81120282015365LGN00_B5
+    N = 7092479
+    1.000000 0.998580 
+    0.998580 1.000000 
+
+ r.covar -r toar_LC81120272016032LGN01_B5,toar_LC81120282016032LGN01_B5
+    N = 7086579
+    1.000000 0.999013 
+    0.999013 1.000000 
+
+ r.covar -r toar_LC81120272016064LGN00_B5,toar_LC81120282016064LGN00_B5
+    N = 7080508
+    1.000000 0.998864 
+    0.998864 1.000000 
+
+ r.covar -r toar_LC81120272016096LGN00_B5,toar_LC81120282016096LGN00_B5
+    N = 7093461
+    1.000000 0.999916 
+    0.999916 1.000000 
 
  
+ На вскидку:
+ r.mapcalc "tmp = toar_LC81120272016096LGN00_B5 - toar_LC81120282016032LGN01_B5" --o                                
+ r.univar -g tmp
+    n=7093980
+    null_cells=150011121
+    cells=157105101
+    min=-0.888683405337637
+    max=0.912555298334171
+    range=1.80123870367181
+    mean=0.0597448187930169
+    mean_of_abs=0.113065141024172
+    stddev=0.134941349735527
+    variance=0.0182091678684459
+    coeff_var=225.862848798697
+    sum=423828.549621286
 
+ r.mapcalc "tmp = toar_LC81120272016096LGN00_B5 - toar_LC81120282016096LGN00_B5" --o
+ r.univar -g tmp
+    n=7093461
+    null_cells=150011640
+    cells=157105101
+    min=-0.0775148196351522
+    max=0.0576742607820018
+    range=0.135189080417154
+    mean=0.00485710407233384
+    mean_of_abs=0.0048735604902454
+    stddev=0.00198718872941062
+    variance=3.94891904629661e-06
+    coeff_var=40.9130358299236
+    sum=34453.6783100413
+
+ 
+ 
+ 
+ 

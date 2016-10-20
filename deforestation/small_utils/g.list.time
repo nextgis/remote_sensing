@@ -1,0 +1,121 @@
+#!/usr/bin/env python
+# -*- coding: utf-8  -*-
+
+#%Module
+#% description: Return list of maps that intersect with point within time range
+#%End
+#%option
+#% key: pattern
+#% type: string
+#% description: pattern for map names
+#% required : yes
+#% multiple: no
+#%end
+#%option
+#% key: type
+#% type: string
+#% description: type of maps
+#% required : no
+#% answer: raster
+#% multiple: no
+#%end
+#%option
+#% key: coordinates
+#% type: string
+#% description: east,north coordinates
+#% required : yes
+#% multiple: yes
+#%end
+#%option
+#% key: count
+#% type: double
+#% description: Count of returned rasters (1: clousest time, 3: 1-closest-1, 5: 1-1-closest-1-1, ...)
+#% required : no
+#% answer: 2
+#% multiple: no
+#%end
+#%option
+#% key: date
+#% type: string
+#% description: Date of central timestump
+#% required : yes
+#% multiple: no
+#%end
+#%option
+#% key: separator
+#% type: string
+#% description: separator string
+#% required : no
+#% answer: ,
+#% multiple: no
+#%end
+#%option
+#% key: date_format
+#% type: string
+#% description: format of the date string 
+#% required : no
+#% answer: %d %b %Y
+#% multiple: no
+#%end
+
+
+
+import sys
+from datetime import datetime
+
+import grass.script as grass
+
+
+def main(options, flags):
+    pattern = options['pattern']
+
+    map_type = options['type']
+    if map_type not in ['rast']:
+        raise ValueError("Type %s does't supported" % (map_type, ))
+
+    coordinates = options['coordinates']
+
+    count = options['count']
+    count = int(count)
+
+    date_format = options['date_format']
+
+    date = options['date']
+    date = datetime.strptime(date, date_format)
+
+    separator = options['separator']
+
+    maps = grass.read_command('g.map.by.point', pattern=pattern, type=map_type, separator=separator, coordinates=coordinates)
+    maps = maps.strip().split(separator)
+
+    timestamps = [grass.read_command('r.timestamp', map=map_name).strip() for map_name in maps]
+    for i in range(len(timestamps)):
+        ts = timestamps[i]
+        if '00:00:00' in ts:
+            timestamps[i] = datetime.strptime(ts, '%d %b %Y %H:%M:%S') 
+        else:
+            timestamps[i] = datetime.strptime(ts, '%d %b %Y') 
+
+    maps = zip(maps, timestamps)
+    maps = sorted(maps, key=lambda tup: tup[1])
+
+    min_delta = closest = None
+    for i in range(len(maps)):
+        name, ts = maps[i]
+        delta = abs(date - ts)
+        if min_delta is None or (delta < min_delta):
+            min_delta = delta
+            closest = i
+
+    if closest - count < 0:
+        raise ValueError('Count (%s) paramether is too big for this date (%s)' % (count, date))
+    if closest + count >= len(maps):
+        raise ValueError('Count (%s) paramether is too big for this date (%s)' % (count, date))
+    maps = [map for map, ts in maps[closest - count: closest + count + 1]]
+    print separator.join(maps)
+
+
+if __name__ == "__main__":
+    options, flags = grass.parser()
+    main(options, flags)
+    sys.exit(0)
