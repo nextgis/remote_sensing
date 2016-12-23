@@ -42,6 +42,16 @@
       r.mapcalc "clean.${MAP}_B${BANDNUM} = if(real.clouds_$MAP, null(), toar_${MAP}_B${BANDNUM})"
     done  
   done
+  
+  # Copy timestamps for new maps
+  for MAP in $(g.list rast pat="clean.*")
+  do 
+      ID=$(echo $MAP | cut -c7-27)
+      BANDNUM=$(echo $MAP | cut -d_ -f2)
+      DATE=$(r.timestamp toar_${ID}_${BANDNUM})
+      r.timestamp map=$MAP date="$DATE"
+  done
+
  
 2.2. Медианный фильтр
  в файлы tileXX складываем идетификаторы сцен с одинаковыми Path-Row, которые будут участвовать в композите.
@@ -72,18 +82,79 @@
 
 4. Выборка точек внутри полигонов
 
- r.to.vect train15_16 out=pos15_16 type=point
-
+4.1. Вырубки
+ 
  v.to.rast train15_16 out=train15_16 use=attr attrib=jdate
  r.to.vect train15_16 out=pos15_16 type=point column=jdate
  
- v.db.addcolumn map="pos15_16" columns="jday int, jyear int"
+ v.db.addcolumn map="pos15_16" columns="jday int, jyear int, poly_cat int"
  v.db.update map='pos15_16' column='jyear' query_column="substr(jdate, 1, 2) + 2000"
  v.db.update map='pos15_16' column='jday' query_column="substr(jdate, 3)"
  
  # 2016-02-01 <-- jday=32, jyear=2016
  v.db.update map='pos15_16' column='label' query_column="date(julianday(jyear||'-01-01'), '+'|| jday || ' day', '-1 day' )"
  
+ v.db.addcolumn map="pos15_16" columns="x double, y double"
+ v.to.db pos15_16 col=x,y opt=coor
+ 
+ v.to.rast train15_16 out=train15_16 use=cat --o
+ v.what.rast pos15_16 rast=train15_16 col=poly_cat
+
+ # PREFIX="wint.clean.LC8112027"
+ for PREFIX in wint.clean.LC8112027 wint.clean.LC8112028 wint.clean.LC8113027
+ do
+     for BANDNUM in $(seq 5)
+     do
+         for POINT in $(v.db.select -c pos15_16 col=cat,poly_cat,x,y,label)
+         do
+             CAT=$(echo $POINT | cut -d"|" -f1)
+             POLY_CAT=$(echo $POINT | cut -d"|" -f2)
+             X=$(echo $POINT | cut -d"|" -f3)
+             Y=$(echo $POINT | cut -d"|" -f4)
+             DATE=$(echo $POINT | cut -d"|" -f5)
+             MAPS=$(g.list.time pat="${PREFIX}*B${BANDNUM}" coord="${X},${Y}" sep=',' date="$DATE" date_format="%Y-%m-%d" type=rast mapset=klsvd 2> /dev/null)
+             if [ -n "$MAPS" ]
+             then 
+                 echo -n ${CAT},${POLY_CAT},${DATE},$MAPS,
+                 r.what map=$MAPS coor=${X},${Y} sep=','
+             fi
+         done > ${PREFIX}.${BANDNUM}.positive
+     done
+ done
+ 
+ 
+4.2. Нет вырубок
+ 
+ v.to.rast nochange15_16 out=nochange15_16 use=cat
+ 
+ r.to.vect nochange15_16 out=neg15_16 type=point column=poly_cat
+ # Random date from interval [2016-01-15 - 45 days, 2016-01-15 + 45 days] 
+ v.db.update map='neg15_16' column='label' query_column="date(julianday('2016-01-15'), (45*random()/9223372036854775807) || ' days' );"
+ 
+ v.db.addcolumn map="neg15_16" columns="x double, y double"
+ v.to.db neg15_16 col=x,y opt=coor
+ 
+ 
+ for PREFIX in wint.clean.LC8112027 wint.clean.LC8112028 wint.clean.LC8113027
+ do
+     for BANDNUM in $(seq 5)
+     do
+         for POINT in $(v.db.select -c neg15_16 col=cat,poly_cat,x,y,label)
+         do
+             CAT=$(echo $POINT | cut -d"|" -f1)
+             POLY_CAT=$(echo $POINT | cut -d"|" -f2)
+             X=$(echo $POINT | cut -d"|" -f3)
+             Y=$(echo $POINT | cut -d"|" -f4)
+             DATE=$(echo $POINT | cut -d"|" -f5)
+             MAPS=$(g.list.time pat="${PREFIX}*B${BANDNUM}" coord="${X},${Y}" sep=',' date="$DATE" date_format="%Y-%m-%d" type=rast  mapset=klsvd  2> /dev/null)
+             if [ -n "$MAPS" ]
+             then 
+                 echo -n ${CAT},${POLY_CAT},${DATE},$MAPS,
+                 r.what map=$MAPS coor=${X},${Y} sep=','
+             fi
+         done > ${PREFIX}.${BANDNUM}.negative
+     done
+ done
  
  
 5. Разброс корреляций пересекающихся сцен в один и тот же день и соседние дни:
@@ -160,7 +231,7 @@
     variance=0.0182091678684459
     coeff_var=225.862848798697
     sum=423828.549621286
-
+ 
  r.mapcalc "tmp = toar_LC81120272016096LGN00_B5 - toar_LC81120282016096LGN00_B5" --o
  r.univar -g tmp
     n=7093461
@@ -175,8 +246,77 @@
     variance=3.94891904629661e-06
     coeff_var=40.9130358299236
     sum=34453.6783100413
+    
+    (Предыдщий пример не совсем валидный, поскольку LC81120272016096LGN00 отличается от остальных растров, см. корреляцию с другими растрами.)
+    
+ 
+ Возьмем два растра, с высокой корреляцией (0.992241): toar_LC81120272015365LGN00_B5 - toar_LC81120272016032LGN01_B5
+    
+ r.mapcalc "tmp = toar_LC81120272015365LGN00_B5 - toar_LC81120272016032LGN01_B5" --o                                
+ r.univar -g tmp
+    n=41454664
+    null_cells=115650437
+    cells=157105101
+    min=-0.948173562566625
+    max=0.873605181355036
+    range=1.82177874392166
+    mean=-0.0198990402358314
+    mean_of_abs=0.0323590041144723
+    stddev=0.0434419243811396
+    variance=0.00188720079393665
+    coeff_var=-218.311656573845
+    sum=-824908.026898873
+   
+
+ r.mapcalc "tmp = toar_LC81120272015365LGN00_B5 - toar_LC81120282015365LGN00_B5" --o                                
+ r.univar -g tmp
+    n=7092479
+    null_cells=150012622
+    cells=157105101
+    min=-0.146954776865737
+    max=0.232640922654063
+    range=0.3795956995198
+    mean=0.0133342675080529
+    mean_of_abs=0.0134262885666484
+    stddev=0.00776818928960526
+    variance=6.03447648391379e-05
+    coeff_var=58.2573379821114
+    sum=94573.0122812478
+
+ r.mapcalc "tmp = toar_LC81120272016032LGN01_B5 - toar_LC81120282016032LGN01_B5" --o                                
+ r.univar -g tmp
+    n=7086579
+    null_cells=150018522
+    cells=157105101
+    min=-0.10628127842387
+    max=0.192090765475445
+    range=0.298372043899314
+    mean=0.0102405608784763
+    mean_of_abs=0.0103881084816015
+    stddev=0.00646438546834387
+    variance=4.17882794833353e-05
+    coeff_var=63.1253067586442
+    sum=72570.5436696316
 
  
- 
- 
- 
+Зимние снимки патчим медианами:
+
+g.region all_scenes
+
+for BAND in 1 2 3 4 5
+do
+    r.series in=$(g.list rast pat="wint*_B${BAND}" mapset=klsvd sep=',') out=median_B${BAND} met=median
+done
+
+for BAND in 1 2 3 4 5
+do
+    for MAP in $(g.list rast pat="wint*_B$BAND")
+    do
+        g.region rast=$MAP
+        r.mapcalc "patched.${MAP}=if(isnull(${MAP}), median_B${BAND}, ${MAP})"
+    done
+done    
+
+
+Запуск процедуры распознавания на базе обученной модели SK-LEARN
+    sh calc_all_sklearn.sh
