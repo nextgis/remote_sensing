@@ -51,6 +51,19 @@
       DATE=$(r.timestamp toar_${ID}_${BANDNUM})
       r.timestamp map=$MAP date="$DATE"
   done
+  
+  # Copy METADATA for new maps
+  for MAP in $(g.list rast pat="clean.*")
+  do 
+      ID=$(echo $MAP | cut -c7-27)
+      BANDNUM=$(echo $MAP | cut -d_ -f2)
+      TEMPFILE=$(g.tempfile -d pid=$$)
+      
+      r.support toar_${ID}_${BANDNUM} savehistory="$TEMPFILE"
+      r.support $MAP loadhistory="$TEMPFILE"
+      
+      rm "$TEMPFILE"
+  done
 
  
 2.2. Медианный фильтр

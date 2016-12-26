@@ -13,6 +13,9 @@ def get_grassdata_path():
 def get_location_name():
     return 'FOREST'
 
+def get_ll_location_name():
+    return 'LatLon'
+
 def get_location_path():
     grass_data = get_grassdata_path()
     locname = get_location_name()
