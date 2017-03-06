@@ -5,6 +5,9 @@ import datetime
 import tarfile
 
 
+def get_gisbase_path():
+    return '/usr/lib/grass72'
+
 def get_grassdata_path():
     HOME_DIR = os.getenv("HOME")
     return os.path.join(HOME_DIR, 'GRASSDATA')

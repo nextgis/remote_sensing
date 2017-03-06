@@ -27,11 +27,11 @@ class GRASS():
         # Импортируем полезные модули
         import grass.script as grass
         import grass.script.array as garray
-        import grass.pygrass.raster as grs_raster
+        # import grass.pygrass.raster as grs_raster
 
         self.grass = grass
         self.garray = garray
-        self.rast = grs_raster
+        # self.rast = grs_raster
 
     def get_region_info(self):
         gregion = self.grass.region()
@@ -86,5 +86,5 @@ class GRASS():
                            
 
 if __name__ == "__main__":
-    grs = GRASS(gisbase='/usr/lib/grass70', dbase='/home/cruncher/GRASSDATA', location='FOREST')
+    grs = GRASS(gisbase='/usr/lib/grass72', dbase='/home/cruncher/GRASSDATA', location='FOREST')
     grs.grass.run_command('g.region', flags='p')
