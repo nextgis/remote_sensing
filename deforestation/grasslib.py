@@ -2,6 +2,7 @@
 
 import os
 import sys
+import uuid
 import numpy as np
 
 class GRASS():
@@ -49,14 +50,6 @@ class GRASS():
             
         return np.reshape(arr, rows*cols)
     
-    # def raster_to_array(self, map_name):
-    #     """Считывает растр в текущем регионе и возвращает его в виде одной строки numpy.array
-    #     """
-    #     arr = self.garray.array()
-    #     arr.read(map_name)
-    #     row, col = arr.shape
-    #     return arr.reshape(row*col)
-    
     def rasters_to_array(self, maps):
         """Считывает список растров и возвращает их в виде двумерного numpy.array
         (каждый растр в отдельном столбце)
@@ -83,6 +76,19 @@ class GRASS():
         rast = self.garray.array()
         rast[...] = arr.reshape(rast.shape)
         rast.write(map_name, overwrite=overwrite)
+        
+    def copy_metadata_from_rast(self, copy_from, copy_to):
+        """Копирует метаданные (r.support) из растра copy_from
+        в растр copy_to.
+        """
+        # Временный файл: 
+        tempfile = uuid.uuid4().hex
+
+        try:
+            self.grass.run_command('r.support', map=copy_from, savehistory=tempfile)
+            self.grass.run_command('r.support', map=copy_to, loadhistory=tempfile)
+        finally:
+            os.unlink(tempfile)
                            
 
 if __name__ == "__main__":
