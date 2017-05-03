@@ -49,7 +49,7 @@ class GRASS():
         #         arr[i] = rast[i]
                 
         arr = self.garray.array()
-        arr.read(map_name)
+        arr.read(map_name, null=np.nan)
             
         return np.reshape(arr, -1)
     
