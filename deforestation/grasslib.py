@@ -40,16 +40,8 @@ class GRASS():
     
     def raster_to_array(self, map_name):
         """Считывает растр в текущем регионе и возвращает его в виде одной строки numpy.array
-        """
-        # with self.rast.RasterRow(map_name) as rast:
-        #     cols, rows = rast.info.cols, rast.info.rows
-        #     dtype = rast[0].dtype
-        #     arr = np.empty((rows, cols), dtype)
-        #     for i in range(rows):
-        #         arr[i] = rast[i]
-                
-        arr = self.garray.array()
-        arr.read(map_name, null=np.nan)
+        """              
+        arr = self.garray.array(map_name, null=np.nan, dtype=np.double)
             
         return np.reshape(arr, -1)
     
