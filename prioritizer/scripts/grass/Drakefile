@@ -31,3 +31,7 @@ $[PERMANENT], %createDB <- [-timecheck]
     grass $[PERMANENT]
     unset GRASS_BATCH_JOB
 
+%import_vud, %import_vector, %import_all <- $[PERMANENT]
+    export GRASS_BATCH_JOB="./import_vud.sh"
+    grass $[PERMANENT]
+    unset GRASS_BATCH_JOB
