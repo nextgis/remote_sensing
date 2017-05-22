@@ -1,0 +1,27 @@
+
+LOCATION_PATH="/home/klsvd/GRASSDATA/DV"
+
+RASTER_RESOLUTION=50
+
+
+$[LOCATION_PATH], %createDB <- [-timecheck]
+    ./createDB.sh $[LOCATION_PATH] 
+    export GRASS_BATCH_JOB="./setDefaultRegion.sh"
+    grass $[LOCATION_PATH]/PERMANENT
+    unset GRASS_BATCH_JOB
+    
+
+%set_resolution <- $[LOCATION_PATH]
+    grass ~/GRASSDATA/DV/PERMANENT/ <<EOF             
+        g.region res=$RASTER_RESOLUTION
+    EOF
+
+%import_roads, %import_vector, %import_all <- $[LOCATION_PATH]
+    export GRASS_BATCH_JOB="./import_roads.sh"
+    grass $[LOCATION_PATH]/PERMANENT
+    unset GRASS_BATCH_JOB
+
+%rasterize_roads, %raster_operations <- %import_roads, %set_resolution
+    export GRASS_BATCH_JOB="./vect_roads_to_rast.sh"
+    grass $[LOCATION_PATH]/PERMANENT
+    unset GRASS_BATCH_JOB
