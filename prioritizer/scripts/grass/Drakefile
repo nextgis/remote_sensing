@@ -12,8 +12,13 @@ $[PERMANENT], %createDB <- [-timecheck]
     unset GRASS_BATCH_JOB
     
 set_resolution.log, %set_resolution <- $[PERMANENT] [-timecheck]
-    grass ~/GRASSDATA/DV/PERMANENT/ <<EOF             
+    grass $[PERMANENT] <<EOF             
         g.region res=$RASTER_RESOLUTION -p > $[OUTPUT]
+    EOF
+
+set_BBOX.log, %set_BBOX <- logg_composite.log, %logg_composite
+    grass $[PERMANENT] <<EOF             
+        g.region vect=logg_composite -p > $[OUTPUT]
     EOF
 
 
@@ -28,15 +33,34 @@ import_vud.log, %import_vud, %import_vector, %import_all <- $[PERMANENT] [-timec
     grass $[PERMANENT] 2> $[OUTPUT]
     unset GRASS_BATCH_JOB
 
+import_declarations.log, %import_declarations, %import_vector, %import_all <- $[PERMANENT] [-timecheck]
+    export GRASS_BATCH_JOB="./import_declarations.sh"
+    grass $[PERMANENT] 2> $[OUTPUT]
+    unset GRASS_BATCH_JOB
+
+
+import_logging.log, %import_logging, %import_vector, %import_all <- $[PERMANENT] [-timecheck]
+    echo "Заглушка: пока данных по рубкам нет" > $[OUTPUT]
+    grass $[PERMANENT] <<EOF             
+        v.edit map=logging tool=create --o
+    EOF
+
+
+; Создание композитного слоя всех имеющихся рубок и деклараций
+logg_composite.log, %logg_composite <- import_declarations.log, %import_declarations, import_logging.log, %import_logging
+    grass $[PERMANENT] <<EOF             
+        v.patch input=declar_prim16,logging out=logg_composite --o 2> $[OUTPUT]
+    EOF
+
 
 
 ; Растеризация
-rasterize_roads.log, %rasterize_roads, %raster_operations <- %import_roads, set_resolution.log, %set_resolution
+rasterize_roads.log, %rasterize_roads, %raster_operations <- import_roads.log, %import_roads, set_resolution.log, %set_resolution, set_BBOX.log, %set_BBOX
     export GRASS_BATCH_JOB="./vect_roads_to_rast.sh"
     grass $[PERMANENT] 2> $[OUTPUT]
     unset GRASS_BATCH_JOB
 
-rasterize_vud.log, %rasterize_vud, %raster_operations <- %import_vud, set_resolution.log, %set_resolution
+rasterize_vud.log, %rasterize_vud, %raster_operations <- import_vud.log, %import_vud, set_resolution.log, %set_resolution, set_BBOX.log, %set_BBOX
     export GRASS_BATCH_JOB="./vect_vud_to_rast.sh"
     grass $[PERMANENT] 2> $[OUTPUT]
     unset GRASS_BATCH_JOB
@@ -44,7 +68,7 @@ rasterize_vud.log, %rasterize_vud, %raster_operations <- %import_vud, set_resolu
 
 
 ; Рассчет расстояний
-dist_to_roads.log, %dist_to_roads, %raster_operations <- rasterize_roads.log, %rasterize_roads, set_resolution.log
+dist_to_roads.log, %dist_to_roads, %raster_operations <- rasterize_roads.log, %rasterize_roads, set_resolution.log, set_BBOX.log, %set_BBOX
     export GRASS_BATCH_JOB="./dist_to_roads.sh"
     grass $[PERMANENT] 2> $[OUTPUT]
     unset GRASS_BATCH_JOB
