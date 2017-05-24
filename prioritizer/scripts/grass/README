@@ -8,6 +8,7 @@
 1. Пересоздать все :
 ```
 rm -R ~/GRASSDATA/DV/
+rm *log
 drake +^%createDB
 ```
 
