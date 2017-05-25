@@ -10,7 +10,7 @@ set -e
 # trop - тропы (?)
 
 
-for TYPE in asfalt "good grunt" grunt land other trop
+for TYPE in asfalt "good grunt" grunt land other trop railway
 do
     MAP_NAME=$(echo $TYPE | tr " " "_")
     MAP_NAME=roads_$MAP_NAME
