@@ -1,5 +1,6 @@
 
 RESULT_DIR=results
+MAXENT_DIR=MaxEnt
 
 GRASSDATA="/home/klsvd/GRASSDATA/"
 LOCATION=DV
@@ -62,11 +63,9 @@ import_declarations.log, %import_declarations, %import_vector, %import_all <- $[
 
 
 import_logging.log, %import_logging, %import_vector, %import_all <- $[PERMANENT_PATH] [-timecheck]
-    echo "Заглушка: пока данных по рубкам нет" > $[OUTPUT]
-    grass $[PERMANENT_PATH] <<EOF             
-        v.edit map=logging tool=create --o
-    EOF
-
+    export GRASS_BATCH_JOB="./import_logging.sh"
+    grass $[PERMANENT_PATH] 2> $[OUTPUT]
+    unset GRASS_BATCH_JOB
 
 import_settlements.log, %import_settlements, %import_vector, %import_all <- $[PERMANENT_PATH] [-timecheck]
     export GRASS_BATCH_JOB="./import_settlements.sh"
@@ -77,7 +76,6 @@ import_wood_stocks.log, %import_wood_stocks, %import_vector, %import_all <- $[PE
     export GRASS_BATCH_JOB="./import_stocks.sh"
     grass $[PERMANENT_PATH] 2> $[OUTPUT]
     unset GRASS_BATCH_JOB
-
 
 
 ; Создание композитного слоя всех имеющихся рубок и деклараций
@@ -107,6 +105,11 @@ rasterize_vud.log, %rasterize_vud, %raster_operations <- import_vud.log, %import
     grass $[PERMANENT_PATH] 2> $[OUTPUT]
     unset GRASS_BATCH_JOB
 
+
+rasterize_logg_composite.log, %rasterize_logg_composite, %raster_operations <- logg_composite.log, %logg_composite, create_AOI_mask.log, %create_AOI_mask
+    grass $[PERMANENT_PATH] <<EOF > $[OUTPUT]
+        v.to.rast input=logg_composite output=logg_composite use=val --o
+    EOF
 
 rasterize_wood_stocks.log, %rasterize_wood_stocks, %raster_operations <- import_wood_stocks.log, %import_wood_stocks, create_AOI_mask.log, %create_AOI_mask
     grass $[PERMANENT_PATH] <<EOF > $[OUTPUT]
@@ -150,9 +153,27 @@ delivery_cost.log, %delivery_cost <- road_costs.csv, create_stocks_comp.log, %cr
     touch $[OUTPUT]
 
 
+; MaxEnt
+$[MAXENT_DIR], %make_maxent_dir <-  [-timecheck]
+    mkdir -p $[OUTPUT]
+
+$[MAXENT_DIR]/logging.csv, %export_logging_csv <- %make_maxent_dir, rasterize_logg_composite.log, %rasterize_logg_composite
+    grass $[PERMANENT_PATH] <<EOF 
+        r.to.vect in=logg_composite out=tmp_point1_$$ type=area
+        v.random -a out=tmp_point_res_$$ npoint=2 restrict=tmp_point1_$$
+        v.db.addtable "tmp_point_res_$$" col="x double, y double, class text" > /dev/null
+        v.to.db "tmp_point_res_$$" col="x,y" opt=coor > /dev/null 
+        v.db.update "tmp_point_res_$$"  col=class val="logg"
+        v.db.select "tmp_point_res_$$" sep=',' col="class,x,y" > $[OUTPUT] 
+        g.remove type=vect pat="tmp_point*" -f > /dev/null
+    EOF
+
+
+
 ; Экспорт результатов
 $[RESULT_DIR], %make_output_dir <- [-timecheck]
     mkdir -p $[OUTPUT]
+
 
 $[RESULT_DIR]/delivery_cost_rgb.tif, %delivery_cost_to_RGB, %raster_operations  <- delivery_cost.log, %delivery_cost, %make_output_dir
     export GRASS_BATCH_JOB="./delivery_to_RGB.sh"
