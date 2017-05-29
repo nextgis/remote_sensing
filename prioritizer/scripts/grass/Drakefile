@@ -1,7 +1,13 @@
 
+BASE="$(pwd)"
+
+RASTER_RESOLUTION=100
+
+; Paths
 RESULT_DIR=results
 MAXENT_DIR=MaxEnt
 
+; GRASS
 GRASSDATA="/home/klsvd/GRASSDATA/"
 LOCATION=DV
 MAPSET=PERMANENT
@@ -11,7 +17,8 @@ PERMANENT_PATH=$[LOCATION_PATH]/PERMANENT
 
 GISBASE=$(grass --config path)
 
-RASTER_RESOLUTION=100
+; MaxEnt
+MAXENT_BIN="/home/klsvd/SRS/MaxEnt/maxent.jar"
 
 
 $[PERMANENT_PATH], %createDB <- [-timecheck]
@@ -20,15 +27,20 @@ $[PERMANENT_PATH], %createDB <- [-timecheck]
     grass $[PERMANENT_PATH]
     unset GRASS_BATCH_JOB
     
-set_resolution.log, %set_resolution <- $[PERMANENT_PATH] [-timecheck]
+; set_resolution.log, %set_resolution <- $[PERMANENT_PATH] [-timecheck]
+;     grass $[PERMANENT_PATH] <<EOF             
+;         g.region res=$RASTER_RESOLUTION -p > $[OUTPUT]
+;     EOF
+
+switch_to_default_BBox_set_resolution.log, %switch_to_default_BBox_set_resolution.log <- $[PERMANENT_PATH] [-timecheck]
     grass $[PERMANENT_PATH] <<EOF             
-        g.region res=$RASTER_RESOLUTION -p > $[OUTPUT]
+        g.region -d res=$[RASTER_RESOLUTION] -p > $[OUTPUT]
     EOF
 
-; set_BBOX.log, %set_BBOX <- import_wood_stocks.log, %import_wood_stocks
-;    grass $[PERMANENT_PATH] <<EOF             
-;        g.region vect=wood_stocks -p > $[OUTPUT]
-;    EOF
+set_logg_BBOX.log, %set_logg_BBOX <- import_declarations.log, %import_declarations
+    grass $[PERMANENT_PATH] <<EOF             
+        g.region vect=declar_prim16 -p > $[OUTPUT]
+    EOF
     
 
 remove_mask.log, %remove_mask, %raster_operations <- $[PERMANENT_PATH] [-timecheck]
@@ -87,7 +99,7 @@ logg_composite.log, %logg_composite <- import_declarations.log, %import_declarat
 
 
 ; Растеризация
-create_AOI_mask.log, %create_AOI_mask, %raster_operations <- import_AOI.log, %import_AOI, set_resolution.log, %set_resolution, remove_mask.log, %remove_mask
+create_AOI_mask.log, %create_AOI_mask, %raster_operations <- import_AOI.log, %import_AOI, switch_to_default_BBox_set_resolution.log, %switch_to_default_BBox_set_resolution.log, remove_mask.log, %remove_mask
     grass $[PERMANENT_PATH] <<EOF > $[OUTPUT]
         g.region vect=AOI
         v.to.rast type=area input=AOI output=AOI use=val --o
@@ -148,6 +160,11 @@ dist_to_roads.log, %dist_to_roads, %raster_operations <- rasterize_roads.log, %r
     grass $[PERMANENT_PATH] 2> $[OUTPUT]
     unset GRASS_BATCH_JOB
 
+dist_to_woods.log, %dist_to_woods, %raster_operations <- rasterize_vud.log, %rasterize_vud, create_AOI_mask.log, %create_AOI_mask
+    export GRASS_BATCH_JOB="./dist_to_woods.sh"
+    grass $[PERMANENT_PATH] 2> $[OUTPUT]
+    unset GRASS_BATCH_JOB
+
 delivery_cost.log, %delivery_cost <- road_costs.csv, create_stocks_comp.log, %create_stocks_comp, rasterize_roads.log, %rasterize_roads, background.log, %background
     python ./cost_of_delivery.py --result delivery_cost --cost_data=$[INPUT] --stocks=wood_stocks_comp --overwrite
     touch $[OUTPUT]
@@ -156,8 +173,11 @@ delivery_cost.log, %delivery_cost <- road_costs.csv, create_stocks_comp.log, %cr
 ; MaxEnt
 $[MAXENT_DIR], %make_maxent_dir <-  [-timecheck]
     mkdir -p $[OUTPUT]
+    mkdir -p $[OUTPUT]/Results
+    mkdir -p $[OUTPUT]/Env
+    echo "This is dir for store exported files for using Maxent" >  $[OUTPUT]/descr.txt
 
-$[MAXENT_DIR]/logging.csv, %export_logging_csv <- %make_maxent_dir, rasterize_logg_composite.log, %rasterize_logg_composite
+$[MAXENT_DIR]/logging.csv, %export_logging_csv <- $[MAXENT_DIR]/descr.txt, %make_maxent_dir, rasterize_logg_composite.log, %rasterize_logg_composite [-timecheck]
     grass $[PERMANENT_PATH] <<EOF 
         r.to.vect in=logg_composite out=tmp_point1_$$ type=area
         v.random -a out=tmp_point_res_$$ npoint=2 restrict=tmp_point1_$$
@@ -168,6 +188,28 @@ $[MAXENT_DIR]/logging.csv, %export_logging_csv <- %make_maxent_dir, rasterize_lo
         g.remove type=vect pat="tmp_point*" -f > /dev/null
     EOF
 
+
+$[MAXENT_DIR]/Env/dist_forest_spec_dub.asc, $[MAXENT_DIR]/Env/dist_forest_spec_jasen.asc, $[MAXENT_DIR]/Env/dist_forest_spec_kedr.asc, $[MAXENT_DIR]/Env/dist_forest_spec_lipa.asc, %export_dists_to_woods_maxent <- $[MAXENT_DIR]/descr.txt, %make_maxent_dir, dist_to_woods.log, %dist_to_woods
+    grass $[PERMANENT_PATH] <<EOF 
+        g.region vect=declar_prim16 res=$[RASTER_RESOLUTION]
+        r.out.gdal in=dist_forest_spec_dub out=$[OUTPUT0] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
+        r.out.gdal in=dist_forest_spec_dub out=$[OUTPUT1] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
+        r.out.gdal in=dist_forest_spec_dub out=$[OUTPUT2] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
+        r.out.gdal in=dist_forest_spec_dub out=$[OUTPUT3] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
+        g.region -d res=$[RASTER_RESOLUTION]
+    EOF
+    
+$[MAXENT_DIR]/Env/delivery_cost.asc, %export_delivery_cost_to_maxent <- $[MAXENT_DIR]/descr.txt, %make_maxent_dir, delivery_cost.log, %delivery_cost
+    grass $[PERMANENT_PATH] <<EOF 
+        g.region vect=declar_prim16 res=$[RASTER_RESOLUTION]
+        r.out.gdal in=delivery_cost out=$[OUTPUT] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
+        g.region -d res=$[RASTER_RESOLUTION]
+    EOF
+
+
+
+$[MAXENT_DIR]/Results/logg.asc, %maxent_model <- $[MAXENT_DIR]/logging.csv, $[MAXENT_DIR]/Env/dist_forest_spec_dub.asc, $[MAXENT_DIR]/Env/dist_forest_spec_jasen.asc, $[MAXENT_DIR]/Env/dist_forest_spec_kedr.asc, $[MAXENT_DIR]/Env/dist_forest_spec_lipa.asc, $[MAXENT_DIR]/Env/delivery_cost.asc, $[MAXENT_DIR]/Env/delivery_cost.asc, %export_dists_to_woods_maxent, %export_delivery_cost_to_maxent
+    java -jar $[MAXENT_BIN] nowarnings noprefixes  outputdirectory=$[MAXENT_DIR]/Results samplesfile=$[INPUT0] environmentallayers=$[MAXENT_DIR]/Env askoverwrite=false visible=false threads=3 jackknife=true randomtestpoints=20 maximumiterations=1500 autorun
 
 
 ; Экспорт результатов
