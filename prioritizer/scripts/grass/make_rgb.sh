@@ -8,6 +8,12 @@ TEMP_RAST0=temp_rast0_$$
 TEMP_RAST1=temp_rast1_$$
 TEMP_RAST2=temp_rast2_$$
 
+TEMP_REGION_FILE=tmp_region_$$
+
+g.region save=$TEMP_REGION_FILE
+
+g.region rast=$RASTER
+
 # Создадим нелинейные отображения для того, чтобы получить не серый RGB-композит из одноканального растра
 r.mapcalc "${TEMP_RAST0} = $RASTER" 
 r.mapcalc "${TEMP_RAST1} = sqrt($RASTER)" 
@@ -25,9 +31,15 @@ do
 done
 
 i.group group=$GROUP_NAME subgroup=all input=${TEMP_RAST0},${TEMP_RAST1},${TEMP_RAST2}
-r.out.gdal ${GROUP_NAME} out=${RESULT_NAME} createopt="COMPRESION=DEFLATE"  type=Byte -f --o
+r.out.gdal ${GROUP_NAME} out=${RESULT_NAME} createopt="COMPRESS=DEFLATE"  type=Byte -f --o
+
+g.region region=$TEMP_REGION_FILE
+
 
 g.remove type=rast name=${TEMP_RAST0} -f
 g.remove type=rast name=${TEMP_RAST1} -f
 g.remove type=rast name=${TEMP_RAST2} -f
 g.remove type=group name=${GROUP_NAME} -f
+
+g.remove type=region name="$TEMP_REGION_FILE" -f
+
