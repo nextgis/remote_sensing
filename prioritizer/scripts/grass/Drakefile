@@ -189,9 +189,9 @@ $[MAXENT_DIR]/logging.csv, %export_logging_csv <- $[MAXENT_DIR]/descr.txt, %make
     EOF
 
 
-$[MAXENT_DIR]/Env/dist_forest_spec_dub.asc, $[MAXENT_DIR]/Env/dist_forest_spec_jasen.asc, $[MAXENT_DIR]/Env/dist_forest_spec_kedr.asc, $[MAXENT_DIR]/Env/dist_forest_spec_lipa.asc, %export_dists_to_woods_maxent <- $[MAXENT_DIR]/descr.txt, %make_maxent_dir, dist_to_woods.log, %dist_to_woods
+$[MAXENT_DIR]/Env/dist_forest_spec_dub.asc, $[MAXENT_DIR]/Env/dist_forest_spec_jasen.asc, $[MAXENT_DIR]/Env/dist_forest_spec_kedr.asc, $[MAXENT_DIR]/Env/dist_forest_spec_lipa.asc, %export_dists_to_maxent <- $[MAXENT_DIR]/descr.txt, %make_maxent_dir, dist_to_woods.log, %dist_to_woods
     grass $[PERMANENT_PATH] <<EOF 
-        g.region vect=declar_prim16 res=$[RASTER_RESOLUTION]
+        g.region vect=declar_prim16 -a res=$[RASTER_RESOLUTION]
         r.out.gdal in=dist_forest_spec_dub out=$[OUTPUT0] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
         r.out.gdal in=dist_forest_spec_dub out=$[OUTPUT1] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
         r.out.gdal in=dist_forest_spec_dub out=$[OUTPUT2] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
@@ -199,16 +199,31 @@ $[MAXENT_DIR]/Env/dist_forest_spec_dub.asc, $[MAXENT_DIR]/Env/dist_forest_spec_j
         g.region -d res=$[RASTER_RESOLUTION]
     EOF
     
+    
+$[MAXENT_DIR]/Env/dist_asfalt.acs, $[MAXENT_DIR]/Env/dist_good_grunt.acs, $[MAXENT_DIR]/Env/dist_grunt.acs, $[MAXENT_DIR]/Env/dist_land.acs, $[MAXENT_DIR]/Env/dist_other.asc, $[MAXENT_DIR]/Env/dist_railway.asc, $[MAXENT_DIR]/Env/dist_trop.asc,  %export_dists_to_maxent <- $[MAXENT_DIR]/descr.txt, %make_maxent_dir, dist_to_roads.log, %dist_to_roads
+    grass $[PERMANENT_PATH] <<EOF 
+        g.region vect=declar_prim16 -a res=$[RASTER_RESOLUTION]
+        r.out.gdal in=dist_asfalt out=$[OUTPUT0] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
+        r.out.gdal in=dist_good_grunt out=$[OUTPUT1] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
+        r.out.gdal in=dist_grunt out=$[OUTPUT2] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
+        r.out.gdal in=dist_land out=$[OUTPUT3] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
+        r.out.gdal in=dist_other out=$[OUTPUT4] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
+        r.out.gdal in=dist_railway out=$[OUTPUT5] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
+        r.out.gdal in=dist_trop out=$[OUTPUT6] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
+        g.region -d res=$[RASTER_RESOLUTION]
+    EOF
+    
+    
 $[MAXENT_DIR]/Env/delivery_cost.asc, %export_delivery_cost_to_maxent <- $[MAXENT_DIR]/descr.txt, %make_maxent_dir, delivery_cost.log, %delivery_cost
     grass $[PERMANENT_PATH] <<EOF 
-        g.region vect=declar_prim16 res=$[RASTER_RESOLUTION]
+        g.region vect=declar_prim16 -a res=$[RASTER_RESOLUTION]
         r.out.gdal in=delivery_cost out=$[OUTPUT] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
         g.region -d res=$[RASTER_RESOLUTION]
     EOF
 
 
 
-$[MAXENT_DIR]/Results/logg.asc, %maxent_model <- $[MAXENT_DIR]/logging.csv, $[MAXENT_DIR]/Env/dist_forest_spec_dub.asc, $[MAXENT_DIR]/Env/dist_forest_spec_jasen.asc, $[MAXENT_DIR]/Env/dist_forest_spec_kedr.asc, $[MAXENT_DIR]/Env/dist_forest_spec_lipa.asc, $[MAXENT_DIR]/Env/delivery_cost.asc, %export_dists_to_woods_maxent, %export_delivery_cost_to_maxent
+$[MAXENT_DIR]/Results/logg.asc, %maxent_model <- $[MAXENT_DIR]/logging.csv, $[MAXENT_DIR]/Env/dist_forest_spec_dub.asc, $[MAXENT_DIR]/Env/dist_forest_spec_jasen.asc, $[MAXENT_DIR]/Env/dist_forest_spec_kedr.asc, $[MAXENT_DIR]/Env/dist_forest_spec_lipa.asc, $[MAXENT_DIR]/Env/dist_asfalt.acs, $[MAXENT_DIR]/Env/dist_good_grunt.acs, $[MAXENT_DIR]/Env/dist_grunt.acs, $[MAXENT_DIR]/Env/dist_land.acs, $[MAXENT_DIR]/Env/dist_other.asc, $[MAXENT_DIR]/Env/dist_railway.asc, $[MAXENT_DIR]/Env/dist_trop.asc, $[MAXENT_DIR]/Env/delivery_cost.asc, %export_dists_woods_maxent, %export_delivery_cost_to_maxent
     java -jar $[MAXENT_BIN] nowarnings noprefixes  outputdirectory=$[MAXENT_DIR]/Results samplesfile=$[INPUT0] environmentallayers=$[MAXENT_DIR]/Env askoverwrite=false visible=false threads=3 jackknife=true randomtestpoints=20 maximumiterations=1500 autorun
 
 import_maxent_model.log, %import_maxent_model <- $[MAXENT_DIR]/Results/logg.asc, %maxent_model
