@@ -9,23 +9,41 @@ MAXENT_DIR=MaxEnt
 
 ; GRASS
 GRASSDATA="/home/klsvd/GRASSDATA/"
-LOCATION=DV
+LOCATION=DV1
 MAPSET=PERMANENT
 
 LOCATION_PATH=$[GRASSDATA]/$[LOCATION]
 PERMANENT_PATH=$[LOCATION_PATH]/PERMANENT
 
 GISBASE=$(grass --config path)
+GRASSEXEC = /usr/bin/grass
 
 ; MaxEnt
 MAXENT_BIN="/home/klsvd/SRS/MaxEnt/maxent.jar"
 
 
-$[PERMANENT_PATH], %createDB <- [-timecheck]
-    ./createDB.sh $[LOCATION_PATH] 
-    export GRASS_BATCH_JOB="./setDefaultRegion.sh"
-    grass $[PERMANENT_PATH]
-    unset GRASS_BATCH_JOB
+logg_ranging.conf, %create_config <- [-timecheck]
+    echo "[DATABASE]
+    grassdata = $[GRASSDATA]
+    location = $[LOCATION]
+    epsg = 32653
+
+    # Working region BBOX
+    north = 5375000
+    south = 4400000
+    east = 850000
+    west = 120000
+    resolution = $[RASTER_RESOLUTION]
+
+    [GRASS]
+    grass_lib = $[GISBASE]
+    grass_exec = $[GRASSEXEC]
+    " > $[OUTPUT]
+
+
+$[PERMANENT_PATH], %createDB <- logg_ranging.conf, %create_config
+    export LD_LIBRARY_PATH=/usr/lib/grass70/lib
+    create_db --config $[INPUT]
     
 ; set_resolution.log, %set_resolution <- $[PERMANENT_PATH] [-timecheck]
 ;     grass $[PERMANENT_PATH] <<EOF             
