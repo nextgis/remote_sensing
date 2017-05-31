@@ -21,6 +21,8 @@ GRASSEXEC = /usr/bin/grass
 ; MaxEnt
 MAXENT_BIN="/home/klsvd/SRS/MaxEnt/maxent.jar"
 
+LD_LIBRARY_PATH=/usr/lib/grass70/lib
+
 
 logg_ranging.conf, %create_config <- [-timecheck]
     echo "[DATABASE]
@@ -41,8 +43,8 @@ logg_ranging.conf, %create_config <- [-timecheck]
     " > $[OUTPUT]
 
 
-$[PERMANENT_PATH], %createDB <- logg_ranging.conf, %create_config
-    export LD_LIBRARY_PATH=/usr/lib/grass70/lib
+$[PERMANENT_PATH], %createDB <- logg_ranging.conf, %create_config [-timecheck]
+    # export LD_LIBRARY_PATH=/usr/lib/grass70/lib
     create_db --config $[INPUT]
     
 ; set_resolution.log, %set_resolution <- $[PERMANENT_PATH] [-timecheck]
@@ -50,15 +52,28 @@ $[PERMANENT_PATH], %createDB <- logg_ranging.conf, %create_config
 ;         g.region res=$RASTER_RESOLUTION -p > $[OUTPUT]
 ;     EOF
 
-switch_to_default_BBox_set_resolution.log, %switch_to_default_BBox_set_resolution.log <- $[PERMANENT_PATH] [-timecheck]
-    grass $[PERMANENT_PATH] <<EOF             
-        g.region -d res=$[RASTER_RESOLUTION] -p > $[OUTPUT]
-    EOF
+switch_to_default_BBox_set_resolution.log, %switch_to_default_BBox_set_resolution <- logg_ranging.conf [python]
+    import imp
+    get_grass = imp.load_source('get_grass', '$[BASE]/get_grass.py')
+    grs = get_grass.get_grass("$[INPUT]")
+    #
+    data = grs.grass.read_command('g.region', res=$[RASTER_RESOLUTION], flags='adp')
+    #
+    with open("$[OUTPUT]", 'w') as logfile:
+        logfile.write(data)
+    
 
-set_logg_BBOX.log, %set_logg_BBOX <- import_declarations.log, %import_declarations
-    grass $[PERMANENT_PATH] <<EOF             
-        g.region vect=declar_prim16 -p > $[OUTPUT]
-    EOF
+
+set_logg_BBOX.log, %set_logg_BBOX <- logg_ranging.conf, import_declarations.log, %import_declarations [python]
+    import imp
+    get_grass = imp.load_source('get_grass', '$[BASE]/get_grass.py')
+    grs = get_grass.get_grass("$[INPUT]")
+    #
+    data = grs.grass.read_command('g.region', vect="declar_prim16", flags='ap')
+    #
+    with open("$[OUTPUT]", 'w') as logfile:
+        logfile.write(data)
+
     
 
 remove_mask.log, %remove_mask, %raster_operations <- $[PERMANENT_PATH] [-timecheck]
