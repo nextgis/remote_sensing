@@ -278,11 +278,26 @@ $[RESULT_DIR], %make_output_dir <- [-timecheck]
     echo "This is dir for store exported result files" >  $[OUTPUT]/descr.txt
 
 
+$[RESULT_DIR]/logg_composite.tif, %export_logg_composite <- logg_composite.log, %logg_composite, $[RESULT_DIR]/descr.txt, %make_output_dir
+    grass $[PERMANENT_PATH] <<EOF
+        g.region vect=declar_prim16 -a res=$[RASTER_RESOLUTION]
+        r.null logg_composite null=0
+        r.out.gdal in=logg_composite out=$[OUTPUT] createopt="COMPRESS=DEFLATE" --o
+        r.null logg_composite setnull=0
+        g.region -d res=$[RASTER_RESOLUTION]
+    EOF
+
 
 $[RESULT_DIR]/delivery_cost_rgb.tif, %delivery_cost_to_RGB, %raster_operations  <- delivery_cost.log, %delivery_cost, $[RESULT_DIR]/descr.txt, %make_output_dir
     export GRASS_BATCH_JOB="./delivery_to_RGB.sh"
     grass $[PERMANENT_PATH]
     unset GRASS_BATCH_JOB
+
+
+$[RESULT_DIR]/delivery_cost.tif, %export_delivery_cost, %raster_operations  <- delivery_cost.log, %delivery_cost, $[RESULT_DIR]/descr.txt, %make_output_dir
+    grass $[PERMANENT_PATH] <<EOF
+        r.out.gdal in=delivery_cost out=$[OUTPUT] createopt="COMPRESS=DEFLATE" --o
+    EOF
 
 $[RESULT_DIR]/maxent_procent.tif, %export_maxent_procent, %raster_operations  <- maxent_to_procent.log, %maxent_to_procent, $[RESULT_DIR]/descr.txt, %make_output_dir
     grass $[PERMANENT_PATH] <<EOF
@@ -293,3 +308,13 @@ $[RESULT_DIR]/maxent_rgb.tif, %maxent_to_RGB, %raster_operations  <- import_maxe
     export GRASS_BATCH_JOB="./maxent_to_RGB.sh"
     grass $[PERMANENT_PATH]
     unset GRASS_BATCH_JOB
+    
+$[RESULT_DIR]/dist_good_grunt.tif, $[RESULT_DIR]/dist_grunt.tif, $[RESULT_DIR]/dist_land.tif, $[RESULT_DIR]/dist_other.tif, $[RESULT_DIR]/dist_railway.tif, $[RESULT_DIR]/dist_trop.tif, $[RESULT_DIR]/dist_asfalt.tif, %export_dists_to_roads, %raster_operations  <- logg_ranging.conf, dist_to_roads.log, %dist_to_roads, $[RESULT_DIR]/descr.txt, %make_output_dir [python]
+    import imp
+    get_grass = imp.load_source('get_grass', '$[BASE]/get_grass.py')
+    grs = get_grass.get_grass("$[INPUT]")
+    #
+    for name in ['dist_good_grunt', 'dist_grunt', 'dist_land', 'dist_other', 'dist_railway', 'dist_trop', 'dist_asfalt']:
+        fname = "$[RESULT_DIR]/" + name + ".tif"
+        grs.grass.run_command('r.out.gdal', input=name, output=fname, createopt="COMPRESS=DEFLATE")
+
