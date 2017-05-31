@@ -1,7 +1,7 @@
 
 BASE="$(pwd)"
 
-RASTER_RESOLUTION=100
+RASTER_RESOLUTION=1000
 
 ; Paths
 RESULT_DIR=results
@@ -166,6 +166,11 @@ background.log, %background, %raster_operations <- create_AOI_mask.log, %create_
     grass $[PERMANENT_PATH] <<EOF             
         r.mapcalc expression="background = 1" --o 2> $[OUTPUT]
     EOF
+    
+woods_background.log, %woods_background, %raster_operations <- create_AOI_mask.log, %create_AOI_mask
+    grass $[PERMANENT_PATH] <<EOF             
+        r.mapcalc expression="forest_background = 1" --o 2> $[OUTPUT]
+    EOF
 
 ; Создание композитного слоя точек продаж
 create_stocks_comp.log, %create_stocks_comp <- rasterize_wood_stocks.log, %rasterize_wood_stocks, rasterize_roads.log, %rasterize_roads
@@ -181,11 +186,45 @@ road_costs.csv <- [-timecheck]
     roads_asfalt: 0.30
     roads_good_grunt: 0.50
     roads_grunt: 0.60
-    roads_land: 0.70
-    roads_other: 0.100
-    roads_trop: 1.00
+    roads_land: 1.2
+    roads_other: 1.20
+    roads_trop: 1.20
     background: 2.50
     EOF
+
+
+
+; Файл коэффициентов расчета ценности запасов:
+woods_costs.csv <- [-timecheck]
+    cat <<EOF > $[OUTPUT]
+    forest_dub_amz1: 1.0
+    forest_dub_bon: 1.0
+    forest_dub_d1: 1.0
+    forest_dub_h1: 1.0
+    forest_dub_psp1: 1.0
+    forest_jasen_amz1: 1.0
+    forest_jasen_bon: 1.0
+    forest_jasen_d1: 1.0
+    forest_jasen_h1: 1.0
+    forest_jasen_psp1: 1.0
+    forest_kedr_amz1: 1.0
+    forest_kedr_bon: 1.0
+    forest_kedr_d1: 1.0
+    forest_kedr_h1: 1.0
+    forest_kedr_psp1: 1.0
+    forest_lipa_amz1: 1.0
+    forest_lipa_bon: 1.0
+    forest_lipa_d1: 1.0
+    forest_lipa_h1: 1.0
+    forest_lipa_psp1: 1.0
+    forest_psp1: 1.0
+    forest_spec_dub: 1.0
+    forest_spec_jasen: 1.0
+    forest_spec_kedr: 1.0
+    forest_spec_lipa: 1.0
+    forest_background: 1.0
+    EOF
+
 
 ; Рассчет расстояний
 dist_to_roads.log, %dist_to_roads, %raster_operations <- rasterize_roads.log, %rasterize_roads, create_AOI_mask.log, %create_AOI_mask
@@ -202,6 +241,9 @@ delivery_cost.log, %delivery_cost <- road_costs.csv, create_stocks_comp.log, %cr
     python ./cost_of_delivery.py --result delivery_cost --cost_data=$[INPUT] --stocks=wood_stocks_comp --overwrite
     touch $[OUTPUT]
 
+woods_cost.log, %woods_cost <- woods_costs.csv, rasterize_vud.log, %rasterize_vud, woods_background.log, %woods_background
+    python ./cost_of_woods.py --result woods_cost --cost_data=$[INPUT] --overwrite
+    touch $[OUTPUT]
 
 ; MaxEnt
 $[MAXENT_DIR], %make_maxent_dir <-  [-timecheck]
@@ -297,6 +339,14 @@ $[RESULT_DIR]/delivery_cost_rgb.tif, %delivery_cost_to_RGB, %raster_operations  
 $[RESULT_DIR]/delivery_cost.tif, %export_delivery_cost, %raster_operations  <- delivery_cost.log, %delivery_cost, $[RESULT_DIR]/descr.txt, %make_output_dir
     grass $[PERMANENT_PATH] <<EOF
         r.out.gdal in=delivery_cost out=$[OUTPUT] createopt="COMPRESS=DEFLATE" --o
+    EOF
+
+$[RESULT_DIR]/delivery_cost_int.tif, %export_delivery_cost_int, %raster_operations  <- delivery_cost.log, %delivery_cost, $[RESULT_DIR]/descr.txt, %make_output_dir
+    grass $[PERMANENT_PATH] <<EOF
+        r.mapcalc "tmp_cost_$$ = int(delivery_cost)"
+        r.colors -e map=tmp_cost_$$ color=gyr
+        r.out.gdal in=tmp_cost_$$ out=$[OUTPUT] createopt="COMPRESS=DEFLATE" --o
+        g.remove type=rast name=tmp_cost_$$ -f
     EOF
 
 $[RESULT_DIR]/maxent_procent.tif, %export_maxent_procent, %raster_operations  <- maxent_to_procent.log, %maxent_to_procent, $[RESULT_DIR]/descr.txt, %make_output_dir
