@@ -8,9 +8,10 @@ set -e
 # land  - полевые и лесные
 # other - зимники и навесные дороги
 # trop - тропы (?)
+# wood - дороги с деревянным покрытием
 
 
-for TYPE in asfalt "good grunt" grunt land other trop railway
+for TYPE in asfalt "good grunt" grunt land other trop railway wood
 do
     MAP_NAME=$(echo $TYPE | tr " " "_")
     MAP_NAME=roads_$MAP_NAME

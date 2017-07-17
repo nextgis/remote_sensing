@@ -143,13 +143,13 @@ def main():
         create_factor(gscript, wood_a, costs, '*', wood_a_cost)
 
         # *(1 + psp_cost): +1 т.к. psp_cost может быть равна нулю, не хочу обнулять слагаемые во втором множителе
-        expression = "{res} = ({type_cost} + {bon_cost} + {h_cost} + {d_cost} + {a_cost})*(1 + {psp_cost})".format(
+        expression = "{res} = ({type_cost} + {bon_cost} + {h_cost} + {d_cost} + {a_cost})*(1 + {psp_cost}*if(isnull(forest_psp1), 0, forest_psp1))".format(
             res=result,
             type_cost=wood_type_cost, bon_cost=wood_bon_cost, 
             h_cost=wood_h_cost, d_cost=wood_d_cost, a_cost=wood_a_cost, 
             psp_cost=costs['forest_psp1']
         )
-        gscript.run_command('r.mapcalc', expression=expression)
+        gscript.run_command('r.mapcalc', expression=expression, overwrite=True)
 
     finally:
         gscript.run_command('g.remove', type='rast', pattern=prefix+'*', flags='f')

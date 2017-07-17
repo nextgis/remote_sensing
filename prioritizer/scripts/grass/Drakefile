@@ -1,7 +1,7 @@
 
 BASE="$(pwd)"
 
-RASTER_RESOLUTION=1000
+RASTER_RESOLUTION=100
 
 ; Paths
 RESULT_DIR=results
@@ -134,6 +134,7 @@ logg_composite.log, %logg_composite <- import_declarations.log, %import_declarat
 ; Растеризация
 create_AOI_mask.log, %create_AOI_mask, %raster_operations <- import_AOI.log, %import_AOI, switch_to_default_BBox_set_resolution.log, %switch_to_default_BBox_set_resolution.log, remove_mask.log, %remove_mask
     grass $[PERMANENT_PATH] <<EOF > $[OUTPUT]
+        g.remove rast name="MASK" -f
         g.region vect=AOI
         v.to.rast type=area input=AOI output=AOI use=val --o
         r.mask raster=AOI
@@ -175,7 +176,7 @@ woods_background.log, %woods_background, %raster_operations <- create_AOI_mask.l
 ; Создание композитного слоя точек продаж
 create_stocks_comp.log, %create_stocks_comp <- rasterize_wood_stocks.log, %rasterize_wood_stocks, rasterize_roads.log, %rasterize_roads
     grass $[PERMANENT_PATH] <<EOF > $[OUTPUT]
-        r.patch input=wood_stocks,roads_railway output=wood_stocks_comp
+        r.patch input=wood_stocks,roads_railway output=wood_stocks_comp --o
     EOF
 
 
@@ -186,10 +187,11 @@ road_costs.csv <- [-timecheck]
     roads_asfalt: 0.30
     roads_good_grunt: 0.50
     roads_grunt: 0.60
-    roads_land: 1.2
-    roads_other: 1.20
-    roads_trop: 1.20
-    background: 2.50
+    roads_land: 1.5
+    roads_other: 1.50
+    roads_trop: 1.50
+    roads_wood: 1.5
+    background: 10.0
     EOF
 
 
@@ -199,29 +201,25 @@ woods_costs.csv <- [-timecheck]
     cat <<EOF > $[OUTPUT]
     forest_dub_amz1: 1.0
     forest_dub_bon: 1.0
-    forest_dub_d1: 1.0
-    forest_dub_h1: 1.0
-    forest_dub_psp1: 1.0
+    forest_dub_d1: 20.0
+    forest_dub_h1: 15.0
     forest_jasen_amz1: 1.0
     forest_jasen_bon: 1.0
-    forest_jasen_d1: 1.0
-    forest_jasen_h1: 1.0
-    forest_jasen_psp1: 1.0
+    forest_jasen_d1: 20.0
+    forest_jasen_h1: 15.0
     forest_kedr_amz1: 1.0
     forest_kedr_bon: 1.0
-    forest_kedr_d1: 1.0
-    forest_kedr_h1: 1.0
-    forest_kedr_psp1: 1.0
+    forest_kedr_d1: 20.0
+    forest_kedr_h1: 15.0
     forest_lipa_amz1: 1.0
     forest_lipa_bon: 1.0
-    forest_lipa_d1: 1.0
-    forest_lipa_h1: 1.0
-    forest_lipa_psp1: 1.0
+    forest_lipa_d1: 20.0
+    forest_lipa_h1: 15.0
     forest_psp1: 1.0
-    forest_spec_dub: 1.0
-    forest_spec_jasen: 1.0
-    forest_spec_kedr: 1.0
-    forest_spec_lipa: 1.0
+    forest_spec_dub: 15.0
+    forest_spec_jasen: 13.0
+    forest_spec_kedr: 14.0
+    forest_spec_lipa: 12.0
     forest_background: 1.0
     EOF
 
@@ -237,13 +235,24 @@ dist_to_woods.log, %dist_to_woods, %raster_operations <- rasterize_vud.log, %ras
     grass $[PERMANENT_PATH] 2> $[OUTPUT]
     unset GRASS_BATCH_JOB
 
-delivery_cost.log, %delivery_cost <- road_costs.csv, create_stocks_comp.log, %create_stocks_comp, rasterize_roads.log, %rasterize_roads, background.log, %background
+
+; Стоимости
+delivery_cost.log, %delivery_cost, %raster_operations <- road_costs.csv, create_stocks_comp.log, %create_stocks_comp, rasterize_roads.log, %rasterize_roads, background.log, %background
     python ./cost_of_delivery.py --result delivery_cost --cost_data=$[INPUT] --stocks=wood_stocks_comp --overwrite
     touch $[OUTPUT]
 
-woods_cost.log, %woods_cost <- woods_costs.csv, rasterize_vud.log, %rasterize_vud, woods_background.log, %woods_background
+woods_cost.log, %woods_cost, %raster_operations <- woods_costs.csv, rasterize_vud.log, %rasterize_vud, woods_background.log, %woods_background
     python ./cost_of_woods.py --result woods_cost --cost_data=$[INPUT] --overwrite
     touch $[OUTPUT]
+
+
+; Приоритеты
+prior.log, %prior, %raster_operations <- woods_cost.log, %woods_cost, delivery_cost.log, %delivery_cost
+    grass $[PERMANENT_PATH] <<EOF 
+        r.mapcalc "prior = woods_cost - delivery_cost" --o
+        touch $[OUTPUT]
+    EOF
+
 
 ; MaxEnt
 $[MAXENT_DIR], %make_maxent_dir <-  [-timecheck]
@@ -366,5 +375,18 @@ $[RESULT_DIR]/dist_good_grunt.tif, $[RESULT_DIR]/dist_grunt.tif, $[RESULT_DIR]/d
     #
     for name in ['dist_good_grunt', 'dist_grunt', 'dist_land', 'dist_other', 'dist_railway', 'dist_trop', 'dist_asfalt']:
         fname = "$[RESULT_DIR]/" + name + ".tif"
-        grs.grass.run_command('r.out.gdal', input=name, output=fname, createopt="COMPRESS=DEFLATE")
+        grs.grass.run_command('r.out.gdal', input=name, output=fname, createopt="COMPRESS=DEFLATE", overwrite=True)
 
+
+$[RESULT_DIR]/prior.tif, %export_prior, %raster_operations  <- prior.log, %prior, $[RESULT_DIR]/descr.txt, %make_output_dir
+    grass $[PERMANENT_PATH] <<EOF
+        r.out.gdal in=prior out=$[OUTPUT] createopt="COMPRESS=DEFLATE" --o
+    EOF
+
+$[RESULT_DIR]/prior_int.tif, %export_prior_int, %raster_operations  <- prior.log, %prior, $[RESULT_DIR]/descr.txt, %make_output_dir
+    grass $[PERMANENT_PATH] <<EOF
+        r.mapcalc "tmp_cost_$$ = int(prior)"
+        r.colors -e map=tmp_cost_$$ color=gyr
+        r.out.gdal in=tmp_cost_$$ out=$[OUTPUT] createopt="COMPRESS=DEFLATE" --o
+        g.remove type=rast name=tmp_cost_$$ -f
+    EOF
