@@ -1,7 +1,7 @@
 
 BASE="$(pwd)"
 
-RASTER_RESOLUTION=100
+RASTER_RESOLUTION=250
 
 ; Paths
 RESULT_DIR=results
@@ -21,7 +21,8 @@ GRASSEXEC = /usr/bin/grass
 ; MaxEnt
 MAXENT_BIN="/home/klsvd/SRS/MaxEnt/maxent.jar"
 
-LD_LIBRARY_PATH=/usr/lib/grass70/lib
+LD_LIBRARY_PATH=/usr/lib/grass72/lib
+; export  GDAL_DATA=/usr/share/gdal/2.1/
 
 
 logg_ranging.conf, %create_config <- [-timecheck]
@@ -96,28 +97,28 @@ import_roads.log, %import_roads, %import_vector, %import_all <- $[PERMANENT_PATH
     grass $[PERMANENT_PATH] 2> $[OUTPUT]
     unset GRASS_BATCH_JOB
 
-import_vud.log, %import_vud, %import_vector, %import_all <- $[PERMANENT_PATH] [-timecheck]
+import_vud.log, %import_vud, %import_vector, %import_all <- $[PERMANENT_PATH]  [-timecheck]
     export GRASS_BATCH_JOB="./import_vud.sh"
     grass $[PERMANENT_PATH] 2> $[OUTPUT]
     unset GRASS_BATCH_JOB
 
-import_declarations.log, %import_declarations, %import_vector, %import_all <- $[PERMANENT_PATH] [-timecheck]
+import_declarations.log, %import_declarations, %import_vector, %import_all <- $[PERMANENT_PATH]  [-timecheck]
     export GRASS_BATCH_JOB="./import_declarations.sh"
     grass $[PERMANENT_PATH] 2> $[OUTPUT]
     unset GRASS_BATCH_JOB
 
 
-import_logging.log, %import_logging, %import_vector, %import_all <- $[PERMANENT_PATH] [-timecheck]
+import_logging.log, %import_logging, %import_vector, %import_all <- $[PERMANENT_PATH]  [-timecheck]
     export GRASS_BATCH_JOB="./import_logging.sh"
     grass $[PERMANENT_PATH] 2> $[OUTPUT]
     unset GRASS_BATCH_JOB
 
-import_settlements.log, %import_settlements, %import_vector, %import_all <- $[PERMANENT_PATH] [-timecheck]
+import_settlements.log, %import_settlements, %import_vector, %import_all <- $[PERMANENT_PATH]  [-timecheck]
     export GRASS_BATCH_JOB="./import_settlements.sh"
     grass $[PERMANENT_PATH] 2> $[OUTPUT]
     unset GRASS_BATCH_JOB
 
-import_wood_stocks.log, %import_wood_stocks, %import_vector, %import_all <- $[PERMANENT_PATH] [-timecheck]
+import_wood_stocks.log, %import_wood_stocks, %import_vector, %import_all <- $[PERMANENT_PATH]  [-timecheck]
     export GRASS_BATCH_JOB="./import_stocks.sh"
     grass $[PERMANENT_PATH] 2> $[OUTPUT]
     unset GRASS_BATCH_JOB
@@ -275,7 +276,7 @@ $[MAXENT_DIR]/logging.csv, %export_logging_csv <- $[MAXENT_DIR]/descr.txt, %make
 
 $[MAXENT_DIR]/Env/dist_forest_spec_dub.asc, $[MAXENT_DIR]/Env/dist_forest_spec_jasen.asc, $[MAXENT_DIR]/Env/dist_forest_spec_kedr.asc, $[MAXENT_DIR]/Env/dist_forest_spec_lipa.asc, %export_dists_to_maxent <- $[MAXENT_DIR]/descr.txt, %make_maxent_dir, dist_to_woods.log, %dist_to_woods
     grass $[PERMANENT_PATH] <<EOF 
-        g.region vect=declar_prim16 -a res=$[RASTER_RESOLUTION]
+        g.region vect=AOI -a res=$[RASTER_RESOLUTION]
         r.out.gdal in=dist_forest_spec_dub out=$[OUTPUT0] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
         r.out.gdal in=dist_forest_spec_dub out=$[OUTPUT1] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
         r.out.gdal in=dist_forest_spec_dub out=$[OUTPUT2] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
@@ -286,7 +287,7 @@ $[MAXENT_DIR]/Env/dist_forest_spec_dub.asc, $[MAXENT_DIR]/Env/dist_forest_spec_j
     
 $[MAXENT_DIR]/Env/dist_asfalt.acs, $[MAXENT_DIR]/Env/dist_good_grunt.acs, $[MAXENT_DIR]/Env/dist_grunt.acs, $[MAXENT_DIR]/Env/dist_land.acs, $[MAXENT_DIR]/Env/dist_other.asc, $[MAXENT_DIR]/Env/dist_railway.asc, $[MAXENT_DIR]/Env/dist_trop.asc,  %export_dists_to_maxent <- $[MAXENT_DIR]/descr.txt, %make_maxent_dir, dist_to_roads.log, %dist_to_roads
     grass $[PERMANENT_PATH] <<EOF 
-        g.region vect=declar_prim16 -a res=$[RASTER_RESOLUTION]
+        g.region vect=AOI -a res=$[RASTER_RESOLUTION]
         r.out.gdal in=dist_asfalt out=$[OUTPUT0] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
         r.out.gdal in=dist_good_grunt out=$[OUTPUT1] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
         r.out.gdal in=dist_grunt out=$[OUTPUT2] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
@@ -300,7 +301,7 @@ $[MAXENT_DIR]/Env/dist_asfalt.acs, $[MAXENT_DIR]/Env/dist_good_grunt.acs, $[MAXE
     
 $[MAXENT_DIR]/Env/delivery_cost.asc, %export_delivery_cost_to_maxent <- $[MAXENT_DIR]/descr.txt, %make_maxent_dir, delivery_cost.log, %delivery_cost
     grass $[PERMANENT_PATH] <<EOF 
-        g.region vect=declar_prim16 -a res=$[RASTER_RESOLUTION]
+        g.region vect=AOI -a res=$[RASTER_RESOLUTION]
         r.out.gdal in=delivery_cost out=$[OUTPUT] format=AAIGrid nodata=-9999 createopt="FORCE_CELLSIZE=TRUE" --o
         g.region -d res=$[RASTER_RESOLUTION]
     EOF
@@ -331,7 +332,7 @@ $[RESULT_DIR], %make_output_dir <- [-timecheck]
 
 $[RESULT_DIR]/logg_composite.tif, %export_logg_composite <- logg_composite.log, %logg_composite, $[RESULT_DIR]/descr.txt, %make_output_dir
     grass $[PERMANENT_PATH] <<EOF
-        g.region vect=declar_prim16 -a res=$[RASTER_RESOLUTION]
+        g.region vect=AOI -a res=$[RASTER_RESOLUTION]
         r.null logg_composite null=0
         r.out.gdal in=logg_composite out=$[OUTPUT] createopt="COMPRESS=DEFLATE" --o
         r.null logg_composite setnull=0
@@ -380,13 +381,17 @@ $[RESULT_DIR]/dist_good_grunt.tif, $[RESULT_DIR]/dist_grunt.tif, $[RESULT_DIR]/d
 
 $[RESULT_DIR]/prior.tif, %export_prior, %raster_operations  <- prior.log, %prior, $[RESULT_DIR]/descr.txt, %make_output_dir
     grass $[PERMANENT_PATH] <<EOF
+        g.region vect=AOI -a res=$[RASTER_RESOLUTION]
         r.out.gdal in=prior out=$[OUTPUT] createopt="COMPRESS=DEFLATE" --o
+        g.region -d res=$[RASTER_RESOLUTION]
     EOF
 
 $[RESULT_DIR]/prior_int.tif, %export_prior_int, %raster_operations  <- prior.log, %prior, $[RESULT_DIR]/descr.txt, %make_output_dir
     grass $[PERMANENT_PATH] <<EOF
+        g.region vect=AOI -a res=$[RASTER_RESOLUTION]
         r.mapcalc "tmp_cost_$$ = int(prior)"
         r.colors -e map=tmp_cost_$$ color=gyr
         r.out.gdal in=tmp_cost_$$ out=$[OUTPUT] createopt="COMPRESS=DEFLATE" --o
         g.remove type=rast name=tmp_cost_$$ -f
+        g.region -d res=$[RASTER_RESOLUTION]
     EOF
